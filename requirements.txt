@@ -1,0 +1,4 @@
+cudf-cu12
+cuml-cu12
+matplotlib
+plotly
