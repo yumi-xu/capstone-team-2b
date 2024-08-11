@@ -1,4 +1,3 @@
-from datetime import datetime
 # section 1
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -9,25 +8,25 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
 
 # Step 1: Data Cleaning
-print("begin step 1: " + str(datetime.now()))
-df = pd.read_csv('csv/incidents.1000.clean.csv')
+# 加载数据
+df = pd.read_csv('../csv/incidents.1000.clean.csv')
+print("Original Dataset:")
+#print(df.head())
 
-# Check and display rows with missing `Severity`
+# 检查并显示缺失 `Severity` 数据的行数
 missing_severity_count = df['Severity'].isnull().sum()
 print(f"\nNumber of rows with missing Severity: {missing_severity_count}")
 
-# Plot missing `Severity` data
+# 绘制缺失 `Severity` 数据的图表
 plt.figure(figsize=(6, 4))
 plt.bar(['Missing Severity', 'Non-missing Severity'], [missing_severity_count, len(df) - missing_severity_count])
 plt.ylabel('Number of Rows')
 plt.title('Missing Severity Data')
 plt.show()
 
-# Drop rows with missing `Severity`
+# 丢弃缺失 `Severity` 数据的行
 df = df.dropna(subset=['Severity'])
 print(f"\nDataset after dropping rows with missing Severity: {len(df)} rows remaining")
 
@@ -44,17 +43,6 @@ df = df.dropna(subset=['Severity'])
 
 print("Data after cleaning:")
 print(df.head())
-
-labels = ["Non-physical harm", "Hazard", "Death", "Injury"]
-
-harm_type = df["Severity"].value_counts().tolist()
-print(harm_type)
-values = [harm_type[0], harm_type[1], harm_type[2], harm_type[3]]
-
-fig = px.pie(values=df['Severity'].value_counts(), names=labels, width=500, height=400, color_discrete_sequence=["skyblue", "black", "red", "orange"], title="AI incident Severities")
-fig.show()
-
-print("begin step 2: " + str(datetime.now()))
 
 # Step 2: Feature Processing
 # Define a function to convert text features to numeric using TF-IDF vectorization
@@ -78,8 +66,6 @@ for column in ['Title', 'Principles', 'Industries', 'Affected Stakeholders', 'Ha
 
 print("TF-IDF features dataframe shape:", tfidf_features_df.shape)
 
-print("begin step 3: " + str(datetime.now()))
-
 # Step 3: Mutual Information Calculation
 # Calculate mutual information scores for each feature
 X = tfidf_features_df
@@ -90,8 +76,6 @@ y = y.astype('category')
 y_encoded = y.cat.codes
 
 mi_scores = mutual_info_classif(X, y_encoded)
-
-print("begin step 4: " + str(datetime.now()))
 
 # Step 4: Feature Importance Ranking
 # Aggregate importance scores for each original column
@@ -105,8 +89,6 @@ top_aggregated_importance = aggregated_importance.head(top_feature_num)
 print(f"Top {top_feature_num} important features:")
 print(top_aggregated_importance)
 
-print("begin step 5: " + str(datetime.now()))
-
 # Step 5: Visualization
 # Plot the top {top_feature_num} most important features
 plt.figure(figsize=(12, 8))
@@ -118,19 +100,18 @@ plt.gca().invert_yaxis()
 plt.show()
 
 # section 3
+import seaborn as sns
 # Select top 5 important features for simplicity
 top_features = top_aggregated_importance['Feature']
 
 # Filter TF-IDF features to include only top features
 selected_features = tfidf_features_df.loc[:, tfidf_features_df.columns.str.startswith(tuple(top_features))]
 
-print(selected_features)
-
-# Step 6: Splitting Data
+# Step 4: Splitting Data
 X_train, X_temp, y_train, y_temp = train_test_split(selected_features, y_encoded, test_size=0.30, random_state=42)
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.50, random_state=42)
 
-# Step 7: Model Training and Evaluation
+# Step 5: Model Training and Evaluation
 models = {
     'Random Forest': RandomForestClassifier(),
     'Logistic Regression': LogisticRegression(max_iter=1000),
@@ -170,9 +151,7 @@ plt.ylabel('Validation Accuracy')
 plt.title('Validation Accuracy of Different Models')
 plt.show()
 
-print("begin step 8: " + str(datetime.now()))
-
-# Step 8: Predicting and Evaluating on Test Set
+# Step 6: Predicting and Evaluating on Test Set
 best_model_name = max(results, key=lambda x: results[x]['accuracy'])
 best_model = results[best_model_name]['model']
 
@@ -196,4 +175,3 @@ plt.xlabel('Predicted')
 plt.ylabel('Actual')
 plt.title('Confusion Matrix on Test Set')
 plt.show()
-print("end step 8: " + str(datetime.now()))

@@ -20,7 +20,7 @@ os.makedirs(tmpDir, exist_ok=True)
 # Step 1: Data Cleaning
 # 加载数据
 print("begin step 1: " + str(datetime.now()))
-df = pd.read_csv('csv/incidents.all.csv')
+df = pd.read_csv('../csv/incidents.all.csv')
 print("Original Dataset:")
 # print(df.head())
 

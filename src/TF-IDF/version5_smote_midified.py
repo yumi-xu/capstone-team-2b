@@ -15,7 +15,7 @@ import plotly.express as px
 
 # Step 1: Data Cleaning
 print("begin step 1: " + str(datetime.now()))
-df = pd.read_csv('csv/incidents.all.csv')
+df = pd.read_csv('../csv/incidents.all.csv')
 
 # Check and display rows with missing `Severity`
 missing_severity_count = df['Severity'].isnull().sum()
@@ -128,8 +128,10 @@ selected_features = tfidf_features_df.loc[:, tfidf_features_df.columns.str.start
 print(selected_features)
 
 # Step 8: Splitting Data
-X_train, X_temp, y_train, y_temp = train_test_split(selected_features, y_encoded, test_size=0.30, random_state=42)
-X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.50, random_state=42)
+# X_train, X_temp, y_train, y_temp = train_test_split(selected_features, y_encoded, test_size=0.30, random_state=42)
+# X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.50, random_state=42)
+
+X_train, X_test, y_train, y_test = train_test_split(selected_features, y, stratify=y, test_size = 0.4, random_state = 42)
 
 print("before sample")
 print('0:', y_train.value_counts()[0], '/', round(y_train.value_counts()[0]/len(y_train) * 100,2), '% of the dataset')
@@ -139,6 +141,7 @@ print('3:', y_train.value_counts()[3], '/',round(y_train.value_counts()[1]/len(y
 
 #add smote
 # Step 7: Oversampling with SMOTE
+#sm = SMOTE(sampling_strategy=1, k_neighbors=5, random_state=42)
 smote = SMOTE(random_state=42)
 X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
 
@@ -159,13 +162,13 @@ models = {
 results = {}
 for model_name, model in models.items():
     model.fit(X_resampled, y_resampled)
-    y_val_pred = model.predict(X_val)
-    accuracy = accuracy_score(y_val, y_val_pred)
+    y_test_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_test_pred)
     results[model_name] = {
         'model': model,
         'accuracy': accuracy,
-        'classification_report': classification_report(y_val, y_val_pred),
-        'confusion_matrix': confusion_matrix(y_val, y_val_pred)
+        'classification_report': classification_report(y_test, y_test_pred),
+        'confusion_matrix': confusion_matrix(y_test, y_test_pred)
     }
 
 # Display results

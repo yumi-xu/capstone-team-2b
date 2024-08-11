@@ -1,3 +1,4 @@
+from datetime import datetime
 # section 1
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -7,26 +8,27 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
 
 # Step 1: Data Cleaning
-# 加载数据
-df = pd.read_csv('csv/incidents.1000.clean.csv')
-print("Original Dataset:")
-#print(df.head())
+print("begin step 1: " + str(datetime.now()))
+df = pd.read_csv('../csv/incidents.all.csv')
 
-# 检查并显示缺失 `Severity` 数据的行数
+# Check and display rows with missing `Severity`
 missing_severity_count = df['Severity'].isnull().sum()
 print(f"\nNumber of rows with missing Severity: {missing_severity_count}")
 
-# 绘制缺失 `Severity` 数据的图表
+# Plot missing `Severity` data
 plt.figure(figsize=(6, 4))
 plt.bar(['Missing Severity', 'Non-missing Severity'], [missing_severity_count, len(df) - missing_severity_count])
 plt.ylabel('Number of Rows')
 plt.title('Missing Severity Data')
 plt.show()
 
-# 丢弃缺失 `Severity` 数据的行
+# Drop rows with missing `Severity`
 df = df.dropna(subset=['Severity'])
 print(f"\nDataset after dropping rows with missing Severity: {len(df)} rows remaining")
 
@@ -43,6 +45,17 @@ df = df.dropna(subset=['Severity'])
 
 print("Data after cleaning:")
 print(df.head())
+
+labels = ["Non-physical harm", "Hazard", "Death", "Injury"]
+
+harm_type = df["Severity"].value_counts().tolist()
+print(harm_type)
+values = [harm_type[0], harm_type[1], harm_type[2], harm_type[3]]
+
+fig = px.pie(values=df['Severity'].value_counts(), names=labels, width=500, height=400, color_discrete_sequence=["skyblue", "black", "red", "orange"], title="AI incident Severities")
+fig.show()
+
+print("begin step 2: " + str(datetime.now()))
 
 # Step 2: Feature Processing
 # Define a function to convert text features to numeric using TF-IDF vectorization
@@ -66,6 +79,8 @@ for column in ['Title', 'Principles', 'Industries', 'Affected Stakeholders', 'Ha
 
 print("TF-IDF features dataframe shape:", tfidf_features_df.shape)
 
+print("begin step 3: " + str(datetime.now()))
+
 # Step 3: Mutual Information Calculation
 # Calculate mutual information scores for each feature
 X = tfidf_features_df
@@ -76,6 +91,8 @@ y = y.astype('category')
 y_encoded = y.cat.codes
 
 mi_scores = mutual_info_classif(X, y_encoded)
+
+print("begin step 4: " + str(datetime.now()))
 
 # Step 4: Feature Importance Ranking
 # Aggregate importance scores for each original column
@@ -89,6 +106,8 @@ top_aggregated_importance = aggregated_importance.head(top_feature_num)
 print(f"Top {top_feature_num} important features:")
 print(top_aggregated_importance)
 
+print("begin step 5: " + str(datetime.now()))
+
 # Step 5: Visualization
 # Plot the top {top_feature_num} most important features
 plt.figure(figsize=(12, 8))
@@ -100,27 +119,46 @@ plt.gca().invert_yaxis()
 plt.show()
 
 # section 3
-import seaborn as sns
 # Select top 5 important features for simplicity
 top_features = top_aggregated_importance['Feature']
 
 # Filter TF-IDF features to include only top features
 selected_features = tfidf_features_df.loc[:, tfidf_features_df.columns.str.startswith(tuple(top_features))]
 
-# Step 4: Splitting Data
+print(selected_features)
+
+# Step 8: Splitting Data
 X_train, X_temp, y_train, y_temp = train_test_split(selected_features, y_encoded, test_size=0.30, random_state=42)
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.50, random_state=42)
 
-# Step 5: Model Training and Evaluation
+print("before sample")
+print('0:', y_train.value_counts()[0], '/', round(y_train.value_counts()[0]/len(y_train) * 100,2), '% of the dataset')
+print('1:', y_train.value_counts()[1], '/',round(y_train.value_counts()[1]/len(y_train) * 100,2), '% of the dataset')
+print('2:', y_train.value_counts()[2], '/',round(y_train.value_counts()[1]/len(y_train) * 100,2), '% of the dataset')
+print('3:', y_train.value_counts()[3], '/',round(y_train.value_counts()[1]/len(y_train) * 100,2), '% of the dataset')
+
+#add smote
+# Step 7: Oversampling with SMOTE
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
+
+print("after sample")
+print('0:', y_resampled.value_counts()[0], '/', round(y_resampled.value_counts()[0]/len(y_resampled) * 100,2), '% of the dataset')
+print('1:', y_resampled.value_counts()[1], '/',round(y_resampled.value_counts()[1]/len(y_resampled) * 100,2), '% of the dataset')
+print('2:', y_resampled.value_counts()[2], '/',round(y_resampled.value_counts()[1]/len(y_resampled) * 100,2), '% of the dataset')
+print('3:', y_resampled.value_counts()[3], '/',round(y_resampled.value_counts()[1]/len(y_resampled) * 100,2), '% of the dataset')
+
+
+# Step 9: Model Training and Evaluation
 models = {
-    'Random Forest': RandomForestClassifier(),
-    'Logistic Regression': LogisticRegression(max_iter=1000),
-    'SVM': SVC()
+    'Random Forest': RandomForestClassifier()
+    #'Logistic Regression': LogisticRegression(max_iter=1000),
+    #'SVM': SVC()
 }
 
 results = {}
 for model_name, model in models.items():
-    model.fit(X_train, y_train)
+    model.fit(X_resampled, y_resampled)
     y_val_pred = model.predict(X_val)
     accuracy = accuracy_score(y_val, y_val_pred)
     results[model_name] = {
@@ -151,7 +189,9 @@ plt.ylabel('Validation Accuracy')
 plt.title('Validation Accuracy of Different Models')
 plt.show()
 
-# Step 6: Predicting and Evaluating on Test Set
+print("begin step 10: " + str(datetime.now()))
+
+# Step 10: Predicting and Evaluating on Test Set
 best_model_name = max(results, key=lambda x: results[x]['accuracy'])
 best_model = results[best_model_name]['model']
 
@@ -175,3 +215,4 @@ plt.xlabel('Predicted')
 plt.ylabel('Actual')
 plt.title('Confusion Matrix on Test Set')
 plt.show()
+print("end step 10: " + str(datetime.now()))
